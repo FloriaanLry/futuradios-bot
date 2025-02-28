@@ -52,7 +52,6 @@ const LOG_SERVER = 'logs-servers.txt';
 const LOG_ERRORS = 'logs-errors.txt';
 let connections = new Map();
 
-// Vérifier et créer les fichiers de logs avec permissions 777 si inexistants
 [LOG_SERVER, LOG_ERRORS].forEach(file => {
     if (!fs.existsSync(file)) {
         fs.writeFileSync(file, '', { mode: 0o777 });
