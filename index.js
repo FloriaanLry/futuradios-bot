@@ -28,11 +28,14 @@ async function checkForUpdate() {
         console.log(`📌 Version locale : ${localVersion || 'Aucune'}`);
         console.log(`🌍 Version distante : ${remoteVersion}`);
 
-        if (localVersion !== remoteVersion.trim()) {
+        if (localVersion !== remoteVersion) {
             console.log('🔄 Nouvelle version détectée. Mise à jour en cours...');
-            const { data: newScript } = await axios.get(SCRIPT_URL);
-            fs.writeFileSync('index.js', newScript);
-            fs.writeFileSync(VERSION_FILE, remoteVersion.trim());
+            const scriptResponse = await axios.get(SCRIPT_URL);
+            if (!scriptResponse || !scriptResponse.data) {
+                throw new Error('Impossible de récupérer le script mis à jour.');
+            }
+            fs.writeFileSync('index.js', scriptResponse.data);
+            fs.writeFileSync(VERSION_FILE, remoteVersion);
             console.log('✅ Mise à jour effectuée. Redémarrage du bot dans 5 secondes...');
             
             setTimeout(() => {
@@ -62,13 +65,14 @@ const client = new Client({
     ]
 });
 
-const CHANNEL_NAME = process.env.CHANNEL_NAME || 'hits';
-const RADIO_URL = process.env.RADIO_URL || 'https://futuradiohits.ice.infomaniak.ch/frhits-128.mp3';
-const TITRAGE_URL = process.env.TITRAGE_URL || 'https://futuradio.com/scripts/titrage/hits.txt';
+const CHANNEL_NAME = process.env.CHANNEL_NAME || 'radio';
+const RADIO_URL = process.env.RADIO_URL;
+const TITRAGE_URL = process.env.TITRAGE_URL;
 const LOG_SERVER = 'logs-servers.txt';
 const LOG_ERRORS = 'logs-errors.txt';
 let connections = new Map();
 
+// Vérifier et créer les fichiers de logs avec permissions 777 si inexistants
 [LOG_SERVER, LOG_ERRORS].forEach(file => {
     if (!fs.existsSync(file)) {
         fs.writeFileSync(file, '', { mode: 0o777 });
@@ -100,39 +104,28 @@ async function playRadio(channel) {
     }
 }
 
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isCommand()) return;
-
-    const botAvatar = client.user.displayAvatarURL();
-    const botName = client.user.username;
-    const botInviteLink = 'https://discord.com/oauth2/authorize?client_id=' + client.user.id + '&permissions=8&scope=bot';
-
-    if (interaction.commandName === 'play') {
-        const channel = await findBestChannel(interaction.guild);
-        if (channel) playRadio(channel);
-        const embed = new EmbedBuilder()
-            .setTitle(botName)
-            .setURL(botInviteLink)
-            .setDescription(`🔊 Le bot est reconnecté et joue ${botName} !`)
-            .setThumbnail(botAvatar)
-            .setFooter({ text: 'Développé par https://florianleroy.fr', iconURL: 'https://imgur.com/YbiswCt' })
-            .setTimestamp();
-        await interaction.reply({ embeds: [embed] });
-    } else if (interaction.commandName === 'musique') {
-        try {
-            const { data } = await axios.get(TITRAGE_URL);
-            const embed = new EmbedBuilder()
-                .setTitle(botName)
-                .setURL(botInviteLink)
-                .setDescription(`🎵 Actuellement sur ${botName} : **${data}**`)
-                .setThumbnail(botAvatar)
-            .setFooter({ text: 'Développé par https://florianleroy.fr', iconURL: 'https://imgur.com/YbiswCt' })
-                .setTimestamp();
-            await interaction.reply({ embeds: [embed] });
-        } catch (error) {
-            await interaction.reply('❌ Erreur. Impossible de récupérer le titrage.');
+async function updateStatus() {
+    try {
+        const { data } = await axios.get(TITRAGE_URL);
+        if (client.user) {
+            client.user.setPresence({
+                activities: [{ name: `${data} 🎵`, type: 0 }],
+                status: 'online'
+            });
         }
+    } catch (error) {
+        console.error('Erreur lors de la mise à jour du statut:', error);
     }
+}
+
+client.once('ready', async () => {
+    console.log(`✅ Connecté en tant que ${client.user.tag}`);
+    client.guilds.cache.forEach(async guild => {
+        const channel = await findBestChannel(guild);
+        if (channel) playRadio(channel);
+    });
+    updateStatus();
+    setInterval(updateStatus, 30000);
 });
 
 client.login(process.env.TOKEN);
