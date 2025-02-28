@@ -79,7 +79,7 @@ const commands = [
         name_localizations: { fr: 'jouer', es: 'reproducir' }
     },
     {
-        name: 'musique',
+        name: 'music',
         description: 'Affiche le titre actuellement en lecture',
         name_localizations: { fr: 'musique', es: 'musica' }
     }
