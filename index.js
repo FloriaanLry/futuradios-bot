@@ -58,6 +58,33 @@ async function checkForUpdate() {
 
 await checkForUpdate();
 
+
+
+async function findBestChannel(guild) {
+    return guild.channels.cache.find(ch => ch.type === ChannelType.GuildVoice && ch.name.includes(CHANNEL_NAME)) ||
+           guild.channels.cache.find(ch => ch.type === ChannelType.GuildVoice);
+}
+
+async function playRadio(channel) {
+    try {
+        const connection = joinVoiceChannel({
+            channelId: channel.id,
+            guildId: channel.guild.id,
+            adapterCreator: channel.guild.voiceAdapterCreator,
+            selfDeaf: true,
+            selfMute: false
+        });
+
+        const player = createAudioPlayer({ behavior: NoSubscriberBehavior.Play });
+        const resource = createAudioResource(RADIO_URL);
+        player.play(resource);
+        connection.subscribe(player);
+        connections.set(channel.guild.id, connection);
+    } catch (error) {
+        console.error(`Erreur lors de la connexion au salon vocal : ${error.message}`);
+    }
+}
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
