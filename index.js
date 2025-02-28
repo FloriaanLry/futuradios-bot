@@ -26,7 +26,7 @@ async function checkForUpdate() {
             fs.writeFileSync('index.js', newScript);
             fs.writeFileSync(VERSION_FILE, remoteVersion.trim());
             console.log('✅ Mise à jour effectuée. Redémarrage du bot...');
-            exec('pm2 restart DiscordBot');
+            exec('pm2 restart index.js');
             process.exit();
         } else {
             console.log('✅ Le bot est à jour.');
