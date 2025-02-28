@@ -13,12 +13,12 @@ const client = new Client({
     ]
 });
 
-const CHANNEL_NAME = process.env.CHANNEL_NAME || 'hits';
-const RADIO_URL = process.env.RADIO_URL || 'https://futuradiohits.ice.infomaniak.ch/frhits-128.mp3';
-const TITRAGE_URL = process.env.TITRAGE_URL || 'https://futuradio.com/scripts/titrage/hits.txt';
+const CHANNEL_NAME = process.env.CHANNEL_NAME || 'musique';
+const RADIO_URL = process.env.RADIO_URL;
+const TITRAGE_URL = process.env.TITRAGE_URL;
 const LOG_SERVER = 'logs-servers.txt';
 const LOG_ERRORS = 'logs-errors.txt';
-let connection = null;
+let connections = new Map();
 
 // Vérifier et créer les fichiers de logs avec permissions 777 si inexistants
 [LOG_SERVER, LOG_ERRORS].forEach(file => {
@@ -37,21 +37,18 @@ async function logError(errorMessage) {
     fs.appendFileSync(LOG_ERRORS, logMessage);
 }
 
-async function createOrGetChannel(guild) {
-    let channel = guild.channels.cache.find(ch => ch.name === CHANNEL_NAME && ch.type === ChannelType.GuildVoice);
-    if (!channel) {
-        channel = await guild.channels.create({ name: CHANNEL_NAME, type: ChannelType.GuildVoice });
-    }
-    return channel;
+async function findBestChannel(guild) {
+    return guild.channels.cache.find(ch => ch.type === ChannelType.GuildVoice && ch.name.includes(CHANNEL_NAME)) ||
+           guild.channels.cache.find(ch => ch.type === ChannelType.GuildVoice);
 }
 
 async function playRadio(channel) {
     try {
-        connection = joinVoiceChannel({
+        const connection = joinVoiceChannel({
             channelId: channel.id,
             guildId: channel.guild.id,
             adapterCreator: channel.guild.voiceAdapterCreator,
-            selfDeaf: false,
+            selfDeaf: true,
             selfMute: false
         });
 
@@ -59,6 +56,7 @@ async function playRadio(channel) {
         const resource = createAudioResource(RADIO_URL);
         player.play(resource);
         connection.subscribe(player);
+        connections.set(channel.guild.id, connection);
     } catch (error) {
         logError(`Impossible de se connecter au salon vocal du serveur ${channel.guild.name} (ID: ${channel.guild.id}): ${error.message}`);
     }
@@ -89,12 +87,11 @@ async function registerCommands() {
 client.once('ready', async () => {
     console.log(`Connecté en tant que ${client.user.tag}`);
     await registerCommands();
-    const guild = client.guilds.cache.first();
-    if (guild) {
+    client.guilds.cache.forEach(async guild => {
         logServerLaunch(guild);
-        const channel = await createOrGetChannel(guild);
-        playRadio(channel);
-    }
+        const channel = await findBestChannel(guild);
+        if (channel) playRadio(channel);
+    });
     updateStatus();
     setInterval(updateStatus, 30000);
 });
@@ -117,8 +114,8 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
     if (interaction.commandName === 'play') {
-        const channel = await createOrGetChannel(interaction.guild);
-        playRadio(channel);
+        const channel = await findBestChannel(interaction.guild);
+        if (channel) playRadio(channel);
         await interaction.reply('🔊 Le bot est reconnecté et joue Futuradio !');
     } else if (interaction.commandName === 'musique') {
         try {
@@ -133,8 +130,8 @@ client.on('interactionCreate', async interaction => {
 client.on('guildCreate', async guild => {
     logServerLaunch(guild);
     await registerCommands();
-    const channel = await createOrGetChannel(guild);
-    playRadio(channel);
+    const channel = await findBestChannel(guild);
+    if (channel) playRadio(channel);
 });
 
 client.login(process.env.TOKEN);
