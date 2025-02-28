@@ -3,8 +3,40 @@ import { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberB
 import axios from 'axios';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import { exec } from 'child_process';
 
 dotenv.config();
+
+const VERSION_FILE = 'version.txt';
+const VERSION_URL = 'https://raw.githubusercontent.com/FloriaanLry/futuradios-bot/refs/heads/main/version.txt';
+const SCRIPT_URL = 'https://raw.githubusercontent.com/FloriaanLry/futuradios-bot/refs/heads/main/index.js';
+
+async function checkForUpdate() {
+    try {
+        const { data: remoteVersion } = await axios.get(VERSION_URL);
+        let localVersion = '';
+
+        if (fs.existsSync(VERSION_FILE)) {
+            localVersion = fs.readFileSync(VERSION_FILE, 'utf8').trim();
+        }
+
+        if (localVersion !== remoteVersion.trim()) {
+            console.log('🔄 Nouvelle version détectée. Mise à jour en cours...');
+            const { data: newScript } = await axios.get(SCRIPT_URL);
+            fs.writeFileSync('index.js', newScript);
+            fs.writeFileSync(VERSION_FILE, remoteVersion.trim());
+            console.log('✅ Mise à jour effectuée. Redémarrage du bot...');
+            exec('pm2 restart index.js');
+            process.exit();
+        } else {
+            console.log('✅ Le bot est à jour.');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors de la vérification de mise à jour :', error);
+    }
+}
+
+await checkForUpdate();
 
 const client = new Client({
     intents: [
@@ -13,7 +45,7 @@ const client = new Client({
     ]
 });
 
-const CHANNEL_NAME = process.env.CHANNEL_NAME || 'musique';
+const CHANNEL_NAME = process.env.CHANNEL_NAME || 'music';
 const RADIO_URL = process.env.RADIO_URL;
 const TITRAGE_URL = process.env.TITRAGE_URL;
 const LOG_SERVER = 'logs-servers.txt';
