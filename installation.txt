@@ -1,0 +1,39 @@
+Ceci est une liste des commandes requises afin de savoir comment configurer le bot.
+
+---
+
+REQUIS : 
+- Serveur VPS sous Linux
+- Application Discord : https://discord.com/developers/applications
+- nodejs sur le VPS
+- npm sur le VPS
+
+---
+
+1. Mettre à jour le fichier .env afin de configurer votre bot.
+
+2. Installer les dépendances du bot grâce à la commande suivante :
+npm install discord.js @discordjs/voice axios dotenv
+
+3. Installer ffmpeg sur le serveur s'il n'est pas déjà installé :
+sudo apt update && sudo apt install ffmpeg -y
+
+4. Installer pm2 s'il n'est pas déjà installé sur le serveur :
+npm install -g pm2
+
+5. Démarrer le bot avec pm2 : 
+pm2 start index.js --name "NomDuBot"
+
+6. Pour relancer automatiquement le bot après un redémarrage du serveur, faire les commandes suivantes : 
+pm2 save
+pm2 startup
+
+7. Profitez.
+
+---
+
+BOT créé par Florian LEROY. 2024.
+https://florianleroy.fr
+https://nity.pro
+Pour hébergez votre bot en ligne 24/7, nous vous conseiller d'utiliser un serveur VPS Linux chez iglao : https://iglao.com
+
