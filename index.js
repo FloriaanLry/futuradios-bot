@@ -103,12 +103,10 @@ const commands = [
     {
         name: 'play',
         description: 'Reconnecte le bot et joue Futuradio',
-        name_localizations: { fr: 'jouer', es: 'reproducir' }
     },
     {
         name: 'music',
         description: 'Affiche le titre actuellement en lecture',
-        name_localizations: { fr: 'musique', es: 'musica' }
     }
 ];
 
