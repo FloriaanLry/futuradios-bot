@@ -13,26 +13,43 @@ const SCRIPT_URL = 'https://raw.githubusercontent.com/FloriaanLry/futuradios-bot
 
 async function checkForUpdate() {
     try {
-        const { data: remoteVersion } = await axios.get(VERSION_URL);
+        console.log('🔎 Vérification des mises à jour...');
+        const response = await axios.get(VERSION_URL);
+        if (!response || !response.data) {
+            throw new Error('Réponse invalide de la requête de version.');
+        }
+        const remoteVersion = response.data.toString().trim();
         let localVersion = '';
 
         if (fs.existsSync(VERSION_FILE)) {
             localVersion = fs.readFileSync(VERSION_FILE, 'utf8').trim();
         }
 
+        console.log(`📌 Version locale : ${localVersion || 'Aucune'}`);
+        console.log(`🌍 Version distante : ${remoteVersion}`);
+
         if (localVersion !== remoteVersion.trim()) {
             console.log('🔄 Nouvelle version détectée. Mise à jour en cours...');
             const { data: newScript } = await axios.get(SCRIPT_URL);
             fs.writeFileSync('index.js', newScript);
             fs.writeFileSync(VERSION_FILE, remoteVersion.trim());
-            console.log('✅ Mise à jour effectuée. Redémarrage du bot...');
-            exec('pm2 restart index.js');
-            process.exit();
+            console.log('✅ Mise à jour effectuée. Redémarrage du bot dans 5 secondes...');
+            
+            setTimeout(() => {
+                exec('pm2 restart index.js', (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`❌ Erreur lors du redémarrage du bot : ${error.message}`);
+                        return;
+                    }
+                    console.log(`✅ Bot redémarré avec succès. Stdout: ${stdout}`);
+                    process.exit();
+                });
+            }, 5000);
         } else {
-            console.log('✅ Le bot est à jour.');
+            console.log('✅ Le bot est à jour, aucune mise à jour nécessaire.');
         }
     } catch (error) {
-        console.error('❌ Erreur lors de la vérification de mise à jour :', error);
+        console.error('❌ Erreur lors de la vérification de mise à jour :', error.message);
     }
 }
 
