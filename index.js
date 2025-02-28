@@ -138,7 +138,7 @@ client.on('interactionCreate', async interaction => {
             .setFooter({ text: 'https://florianleroy.fr', iconURL: 'https://i.imgur.com/YbiswCt.png' })
             .setTimestamp();
         await interaction.reply({ embeds: [embed] });
-    } else if (interaction.commandName === 'musique') {
+    } else if (interaction.commandName === 'music') {
         try {
             const { data } = await axios.get(TITRAGE_URL);
             const embed = new EmbedBuilder()
