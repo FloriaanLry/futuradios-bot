@@ -94,3 +94,60 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.TOKEN);
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildVoiceStates
+    ]
+});
+
+const CHANNEL_NAME = process.env.CHANNEL_NAME || 'hits';
+const RADIO_URL = process.env.RADIO_URL || 'https://futuradiohits.ice.infomaniak.ch/frhits-128.mp3';
+const TITRAGE_URL = process.env.TITRAGE_URL || 'https://futuradio.com/scripts/titrage/hits.txt';
+const LOG_SERVER = 'logs-servers.txt';
+const LOG_ERRORS = 'logs-errors.txt';
+let connections = new Map();
+
+[LOG_SERVER, LOG_ERRORS].forEach(file => {
+    if (!fs.existsSync(file)) {
+        fs.writeFileSync(file, '', { mode: 0o777 });
+    }
+});
+
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+
+    const botAvatar = client.user.displayAvatarURL();
+    const botName = client.user.username;
+    const botInviteLink = 'https://discord.com/oauth2/authorize?client_id=' + client.user.id + '&permissions=8&scope=bot';
+
+    if (interaction.commandName === 'play') {
+        const channel = await findBestChannel(interaction.guild);
+        if (channel) playRadio(channel);
+        const embed = new EmbedBuilder()
+            .setTitle(botName)
+            .setURL(botInviteLink)
+            .setDescription(`🔊 Le bot est reconnecté et joue ${botName} !`)
+            .setThumbnail(botAvatar)
+            .setFooter({ text: 'Développé par https://florianleroy.fr', iconURL: 'https://imgur.com/YbiswCt' })
+            .setTimestamp();
+        await interaction.reply({ embeds: [embed] });
+    } else if (interaction.commandName === 'musique') {
+        try {
+            const { data } = await axios.get(TITRAGE_URL);
+            const embed = new EmbedBuilder()
+                .setTitle(botName)
+                .setURL(botInviteLink)
+                .setDescription(`🎵 Actuellement sur ${botName} : **${data}**`)
+                .setThumbnail(botAvatar)
+            .setFooter({ text: 'Développé par https://florianleroy.fr', iconURL: 'https://imgur.com/YbiswCt' })
+                .setTimestamp();
+            await interaction.reply({ embeds: [embed] });
+        } catch (error) {
+            await interaction.reply('❌ Erreur. Impossible de récupérer le titrage.');
+        }
+    }
+});
+
+client.login(process.env.TOKEN);
